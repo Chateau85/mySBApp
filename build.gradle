@@ -1,42 +1,82 @@
-buildscript {
-    ext {
-        springBootVersion = '2.1.9.RELEASE'
-    }
-    repositories {
-        mavenCentral()
-        jcenter()
-    }
-    dependencies {
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.SpotBugsTask
+
+plugins {
+    id 'org.springframework.boot' version '3.5.16'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.cyclonedx.bom' version '3.3.0'
+    id 'com.github.spotbugs' version '6.4.4'
+    id 'java'
+    id 'eclipse'
+}
+
+group = 'com.jojoldu.book'
+version = '1.0.4-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
-apply plugin: 'java'
-apply plugin: 'eclipse'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'io.spring.dependency-management'
+ext['jackson-bom.version'] = '2.21.5'
+ext['log4j2.version'] = '2.25.5'
+ext['commons-lang3.version'] = '3.18.0'
 
-group 'com.jojoldu.book'
-version '1.0.4-SNAPSHOT-'+new Date().format("yyyyMMddHHmmss")
-sourceCompatibility = 1.8
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 dependencies {
-    compile('org.springframework.boot:spring-boot-starter-web')
-    compile('org.projectlombok:lombok')
-    compile('org.springframework.boot:spring-boot-starter-data-jpa')
-    compile('org.springframework.boot:spring-boot-starter-mustache')
-    compile('com.h2database:h2')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-mustache'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.session:spring-session-jdbc'
 
-    compile('org.springframework.boot:spring-boot-starter-oauth2-client')
-    compile('org.springframework.session:spring-session-jdbc')
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-    compile("org.mariadb.jdbc:mariadb-java-client")
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 
-    testCompile('org.springframework.boot:spring-boot-starter-test')
-    testCompile("org.springframework.security:spring-security-test")
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    spotbugsPlugins('com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0') {
+        transitive = false
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// This repository currently contains build configuration only, without an application main class.
+tasks.named('bootJar') {
+    enabled = false
+}
+
+tasks.named('jar') {
+    enabled = true
+}
+
+spotbugs {
+    effort = Effort.valueOf('MAX')
+    reportLevel = Confidence.valueOf('MEDIUM')
+    ignoreFailures = false
+}
+
+tasks.withType(SpotBugsTask).configureEach {
+    reports {
+        xml.required = true
+        html.required = false
+    }
 }
